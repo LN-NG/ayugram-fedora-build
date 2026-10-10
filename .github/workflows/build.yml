@@ -18,7 +18,9 @@ jobs:
           persist-credentials: false
       - uses: actions/cache/restore@v5
         with:
-          path: .cache/ccache
+          path: |
+            .cache/ccache
+            .cache/cargo
           key: ayugram-fedora44-gcc16-v1-${{ github.run_id }}
           restore-keys: ayugram-fedora44-gcc16-v1-
       - name: Build RPM in Fedora 44
@@ -27,7 +29,9 @@ jobs:
       - uses: actions/cache/save@v5
         if: always()
         with:
-          path: .cache/ccache
+          path: |
+            .cache/ccache
+            .cache/cargo
           key: ayugram-fedora44-gcc16-v1-${{ github.run_id }}
       - name: Upload RPM
         uses: actions/upload-artifact@v7

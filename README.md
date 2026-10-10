@@ -20,3 +20,9 @@ For a clean rebuild with cache, use scripts/container.sh. For a direct increment
 build, run cmake --build against the configured build directory inside
 rpmbuild/BUILD; the directory path is printed in the build log. Ccache saves time;
 remaining compilation and linking still need memory.
+
+The tlottie static library is built from the commit and patch-set revisions pinned
+by the upstream 7.2.9 Dockerfile: 31f1b542f88e7b4be9a01e749920d857535fc715
+and desktop-app/patches 519aaa084608fa6f9a2bfbd1959d133c44d94227.
+Its MIT license is included in the RPM; Cargo downloads and compiled tlottie
+artifacts are part of the cache/build-base export. No system tlottie is replaced.

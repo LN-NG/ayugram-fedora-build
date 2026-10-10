@@ -32,6 +32,8 @@ Summary: Desktop Telegram client with good customization and Ghost mode
 
 # create-ayugram-tarball-full.sh 6.3.10.
 Source0: AyuGramDesktop-%{version}-full.tar.gz
+Source1: tlottie-31f1b542f88e7b4be9a01e749920d857535fc715.tar.gz
+Source2: tlottie-upstream.patch
 
 # Fix searching protobuf cmake module
 # Fix compilation with gcc16
@@ -96,6 +98,8 @@ BuildRequires: boost-devel
 BuildRequires: cmake
 BuildRequires: desktop-file-utils
 BuildRequires: ffmpeg-devel
+BuildRequires: rust
+BuildRequires: cargo
 BuildRequires: gcc
 BuildRequires: gcc-c++
 BuildRequires: libappstream-glib
@@ -106,6 +110,8 @@ BuildRequires: libstdc++-devel
 BuildRequires: minizip-compat-devel
 BuildRequires: ninja-build
 BuildRequires: python3
+BuildRequires: patch
+BuildRequires: tar
 BuildRequires: pkgconfig(openh264)
 BuildRequires: cmake(KF6CoreAddons)
 BuildRequires: cmake(tde2e)
@@ -118,6 +124,8 @@ Requires: webkitgtk6.0%{?_isa}
 Provides: ayugram = %{?epoch:%{epoch}:}%{version}-%{release}
 Provides: ayugram%{?_isa} = %{?epoch:%{epoch}:}%{version}-%{release}
 
+Provides: bundled(tlottie) = 0.1.0~git31f1b542f8
+
 %description
 AyuGram Desktop is a Telegram desktop client with customization features.
 This package is built from the pinned upstream 7.2.9 source release.
@@ -125,14 +133,26 @@ This package is built from the pinned upstream 7.2.9 source release.
 %prep
 # Unpacking AyuGram Desktop source archive...
 %autosetup -n %{appname}-%{version}-full -p1
+mkdir tlottie-src
+tar -xf %{SOURCE1} -C tlottie-src --strip-components=1
+patch -p1 -d tlottie-src < %{SOURCE2}
 
 # Unbundling libraries... except minizip
 rm -rf Telegram/ThirdParty/{GSL,QR,dispatch,expected,fcitx5-qt,hime,hunspell,kimageformats,lz4,nimf,range-v3,xxHash}
 
 %build
+export CARGO_HOME=/work/.cache/cargo
+export CARGO_BUILD_JOBS=2
+cargo rustc --manifest-path tlottie-src/Cargo.toml --lib --release --locked \
+    --features c-api --crate-type staticlib --target x86_64-unknown-linux-gnu \
+    -- --print native-static-libs
+mkdir -p tlottie-prefix/lib tlottie-prefix/include/tlottie
+cp tlottie-src/target/x86_64-unknown-linux-gnu/release/libtlottie.a tlottie-prefix/lib/
+cp tlottie-src/include/tlottie.h tlottie-prefix/include/tlottie/
 # Building AyuGram Desktop using cmake...
 %cmake -G Ninja \
     -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_PREFIX_PATH="$PWD/tlottie-prefix" \
     -DCMAKE_C_COMPILER_LAUNCHER=ccache \
     -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
     -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=mold" \
@@ -159,7 +179,7 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/com.ayugram.desktop.d
 
 %files
 %doc README.md changelog.txt
-%license LICENSE LEGAL
+%license LICENSE LEGAL tlottie-src/LICENSE
 %{_bindir}/AyuGram
 %{_datadir}/applications/com.ayugram.desktop.desktop
 %{_datadir}/icons/hicolor/*/apps/*.png
@@ -167,3 +187,7 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/com.ayugram.desktop.d
 %{_datadir}/dbus-1/services/com.ayugram.desktop.service
 %{_metainfodir}/com.ayugram.desktop.metainfo.xml
 
+
+%changelog
+* Sun Oct 11 2026 Cloud Build <build@users.noreply.github.com> - 7.2.9-1.local
+- Build pinned upstream release with its pinned tlottie dependency
