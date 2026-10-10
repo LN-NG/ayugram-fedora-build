@@ -1,0 +1,57 @@
+name: AyuGram 7.2.9 Fedora 44 x86_64
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ayugram-fedora44
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/cache/restore@v5
+        with:
+          path: .cache/ccache
+          key: ayugram-fedora44-gcc16-v1-${{ github.run_id }}
+          restore-keys: ayugram-fedora44-gcc16-v1-
+      - name: Build RPM in Fedora 44
+        run: |
+          docker run --rm --volume "$PWD:/work" --workdir /work quay.io/fedora/fedora:44 bash scripts/container.sh
+      - uses: actions/cache/save@v5
+        if: always()
+        with:
+          path: .cache/ccache
+          key: ayugram-fedora44-gcc16-v1-${{ github.run_id }}
+      - name: Upload RPM
+        uses: actions/upload-artifact@v7
+        with:
+          name: ayugram-fedora44-rpm
+          path: output/*.rpm
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
+      - name: Upload local incremental build base
+        uses: actions/upload-artifact@v7
+        with:
+          name: ayugram-fedora44-build-base
+          path: |
+            output/ayugram-7.2.9-fedora44-build-base.tar.gz
+            output/toolchain.txt
+          compression-level: 0
+          retention-days: 3
+          if-no-files-found: error
+      - name: Upload build logs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: build-logs
+          path: output/*.log
+          if-no-files-found: ignore
+          retention-days: 7
